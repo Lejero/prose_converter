@@ -130,6 +130,8 @@ fn main() -> Result<(), PlatformError> {
         Err(_) => println!("Error: "),
     };
 
+    let expr = prose_interpreter::expression::Expression::from_string("2 + 2");
+
     AppLauncher::with_window(
         WindowDesc::new(build_ui)
             .window_size((1000.0, 600.0))
