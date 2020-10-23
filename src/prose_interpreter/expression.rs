@@ -40,11 +40,13 @@ pub struct Expression {
 named!(is_float(&str) -> f64,
     map_res!(recognize!(double), f64::from_str)
 );
-named!(is_int(&str) -> i64,
-    map_res!(recognize!(i64!(nom::number::Endianness::Big)), i64::from_str)
-);
+
+// named!(is_int(&str) -> i64,
+//     map_res!(recognize!(i64!(nom::number::Endianness::Big)), i64::from_str)
+// );
+
 named!(is_component(&str) -> Component,
-    alt!(map_res!(is_float, Operand::Number), map_res!(is_float, Operand::Number))
+    map_res!(is_float, Operand::Number)
 );
 
 fn identify_component(input: &str) -> Option<Component> {
