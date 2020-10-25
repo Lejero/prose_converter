@@ -9,15 +9,20 @@ use std::sync::Arc;
 use prose_converter::http_parser::*;
 use prose_converter::prose_interpreter::*;
 
+use prose_converter::prose_interpreter::expr::*;
+
 use nom::character::complete::digit1;
 use nom::combinator::all_consuming;
 use nom::sequence::tuple;
 //use nom::combinator::*;
 //use nom::error::*;
 //use nom::number::complete::*;
+use nom::branch::alt;
+use nom::number::complete::double;
 use nom::*;
 
 use std::str;
+use std::str::*;
 
 const INPUT: &str = "!BP1:VAR| The quick brown fox jumps over the lazy dog.
 
@@ -120,13 +125,25 @@ fn main() -> Result<(), PlatformError> {
     //let exclaim = tag!("!");
     let var_parser = tuple((exclaim, name, type_ind, var, val));
     //let res = var_parser(b"!BP1:VAR|The quick brown fox jumps over the lazy dog.\n");
-    match var_parser(b"!BP1:VAR|The quick brown fox jumps over the lazy dog.\n") {
-        Ok((inp, (_, name, _, _, val))) => println!(
-            "Remaining Input: {}\nResult Name: {}\nResult Value: {}",
-            str::from_utf8(inp).unwrap(),
-            str::from_utf8(name).unwrap(),
-            str::from_utf8(val).unwrap()
-        ),
+    // match var_parser(b"!BP1:VAR|The quick brown fox jumps over the lazy dog.\n") {
+    //     Ok((inp, (_, name, _, _, val))) => println!(
+    //         "Remaining Input: {}\nResult Name: {}\nResult Value: {}",
+    //         str::from_utf8(inp).unwrap(),
+    //         str::from_utf8(name).unwrap(),
+    //         str::from_utf8(val).unwrap()
+    //     ),
+    //     Err(_) => println!("Error: "),
+    // };
+    named!(exact_is_float(&str) -> f64,
+        exact!(map_res!(recognize!(double), f64::from_str))
+    );
+
+    match exact_is_float("42") {
+        Ok((inp, num)) => println!("Remaining Input: '{}', Result Value: {}", inp, num),
+        Err(_) => println!("Error: "),
+    };
+    match exact_is_float("4Z") {
+        Ok((inp, num)) => println!("Remaining Input: '{}', Result Value: {}", inp, num),
         Err(_) => println!("Error: "),
     };
 

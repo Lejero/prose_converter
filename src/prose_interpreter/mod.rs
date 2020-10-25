@@ -1,7 +1,7 @@
 extern crate lazy_static;
 extern crate regex;
 
-pub mod expression;
+pub mod expr;
 mod prose;
 pub mod prose_parsec;
 
