@@ -42,6 +42,7 @@ impl ops::Add<Self> for Operand {
                     panic!("if let failed for ops::Add trait on Operand struct.")
                 }
             }
+            _ => panic!("We're Panicing!"),
         }
     }
 }

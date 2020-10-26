@@ -10,12 +10,13 @@ use nom::sequence::tuple;
 //use nom::error::*;
 //use nom::number::complete::*;
 use nom::branch::alt;
-use nom::error::{VerboseError, VerboseErrorKind};
+use nom::error::{ErrorKind, VerboseError, VerboseErrorKind};
 use nom::number::complete::double;
 use nom::*;
 //use std::f64;
 use super::operand::*;
 use std::ops;
+use std::result::Result;
 use std::str::*;
 
 pub enum Component {
@@ -31,7 +32,7 @@ pub enum Component {
 //     Divide,
 // }
 
-struct BinaryOperator(fn(Operand, Operand) -> Operand);
+pub struct BinaryOperator(fn(Operand, Operand) -> Operand);
 
 pub struct Expression {
     components: Vec<Component>,
@@ -71,7 +72,7 @@ named!(exact_float(&str) -> f64,
 // }
 
 named!(exact_binary_op(&str) -> BinaryOperator,
-    exact!(map_res!(tag!("+"), |x| parse_binary_op(x)))
+    exact!(map_res!(recognize!(tag!("+")), |x| parse_binary_op(x)))
 );
 
 //Full
@@ -94,13 +95,23 @@ named!(is_comp(&str) -> Component,
     )
 );
 
-fn parse_binary_op(input: &str) -> IResult<BinaryOperator, VerboseError<&str>> {
-    match (input) {
-        "+" => BinaryOperator(|l, r| l + r),
+// fn parse_binary_op(input: &str) -> IResult<&str, BinaryOperator, (&str, ErrorKind)> {
+//     match input {
+//         "+" => Result::Ok((input, BinaryOperator(|l, r| l + r))),
+//         // "-" => BinaryOperator::Subtract,
+//         // "*" => BinaryOperator::Multiply,
+//         // "/" => BinaryOperator::Divide,
+//         _ => Result::Err(Err::Error((input, ErrorKind::Fix))),
+//     }
+// }
+
+fn parse_binary_op(input: &str) -> Result<BinaryOperator, &str> {
+    match input {
+        "+" => Ok(BinaryOperator(|l, r| l + r)),
         // "-" => BinaryOperator::Subtract,
         // "*" => BinaryOperator::Multiply,
         // "/" => BinaryOperator::Divide,
-        _ => Err(42),
+        _ => Err("We're Panicing!"),
     }
 }
 
@@ -114,19 +125,19 @@ fn parse_binary_op(input: &str) -> IResult<BinaryOperator, VerboseError<&str>> {
 //     }
 // }
 
-fn error_parse_bin_op(input: &str) -> VerboseError<&str> {
-    VerboseError {
-        errors: vec![(
-            input,
-            VerboseErrorKind::Context(
-                &(format!(
-                "Could not parse input '{}'. It does not correspond to a known binary operator.",
-                input
-            )),
-            ),
-        )],
-    }
-}
+// fn error_parse_bin_op(input: &str) -> VerboseError<&str> {
+//     VerboseError {
+//         errors: vec![(
+//             input,
+//             VerboseErrorKind::Context(
+//                 &(format!(
+//                 "Could not parse input '{}'. It does not correspond to a known binary operator.",
+//                 input
+//             )),
+//             ),
+//         )],
+//     }
+// }
 
 // fn is_component(input: &str) -> R
 
