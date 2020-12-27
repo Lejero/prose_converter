@@ -39,8 +39,7 @@ pub fn convert_prose(input_var: &str) -> String {
 
     let mut output: String = String::from(input_var);
     for var in vars {
-        let pattern: Regex =
-            Regex::new((format!(r"!({})[^:]", var.name.as_str())).as_str()).unwrap();
+        let pattern: Regex = Regex::new((format!(r"!{}[^:]", var.name.as_str())).as_str()).unwrap();
         output = pattern
             .replace_all(output.as_str(), var.value.as_str())
             .to_string();

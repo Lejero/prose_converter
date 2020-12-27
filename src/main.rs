@@ -87,35 +87,14 @@ fn build_ui() -> impl Widget<AppState> {
 }
 
 fn main() -> Result<(), PlatformError> {
+    let window = WindowDesc::new(build_ui)
+        .window_size((1000.0, 600.0))
+        .title("Prose Converter");
+
     let app_state = AppState {
         pre_format_text: INPUT.to_string(),
         post_format_text: convert_prose(&INPUT).to_string(),
     };
-
-    // println(
-    //     "{}",
-    //     http_parser::request_line(b"GET http://www.w3.org/pub/WWW/TheProject.html HTTP/1.1"),
-    // );
-    let num = "42";
-    let not_num = "4Z";
-
-    let parser = all_consuming(digit1::<&str, ()>);
-    //println!("Is {} a number: {}", num, be_i32(num.as_bytes()).unwrap().1);
-
-    match parser(num) {
-        Ok((inp, res)) => println!(
-            "Is {} a number: {}. It is {}. Remaining input: {}",
-            num, "true", res, inp
-        ),
-        Err(e) => println!("Is {} a number: {}", num, "false"),
-    }
-    match parser(not_num) {
-        Ok((inp, res)) => println!(
-            "Is {} a number: {}. It is {}. Remaining input: {}",
-            not_num, "true", "", ""
-        ),
-        Err(e) => println!("Is {} a number: {}", not_num, "false"),
-    }
 
     named!(exclaim, tag!("!"));
     named!(name, take_until!(":"));
@@ -149,10 +128,15 @@ fn main() -> Result<(), PlatformError> {
 
     let expr = expression::Expression::from_string("2 + 2");
 
-    AppLauncher::with_window(
-        WindowDesc::new(build_ui)
-            .window_size((1000.0, 600.0))
-            .title("Test App"),
-    )
-    .launch(app_state)
+    AppLauncher::with_window(window)
+        .delegate(MyAppDelegate {})
+        .launch(app_state)
+}
+
+struct MyAppDelegate {}
+
+impl<T: Data> AppDelegate<T> for MyAppDelegate {
+    fn window_removed(&mut self, _id: WindowId, _data: &mut T, _env: &Env, _ctx: &mut DelegateCtx) {
+        std::process::exit(0x0000);
+    }
 }
