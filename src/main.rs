@@ -1,28 +1,23 @@
 #![allow(dead_code)]
 #![allow(unused_imports)]
 
+use prose_converter as pc;
+
 use druid::widget::*;
 use druid::*;
-use regex::internal::Input;
-use std::sync::Arc;
 
-use prose_converter::http_parser::*;
-use prose_converter::prose_interpreter::*;
+use pc::prose_interpreter::expr::*;
+use pc::prose_interpreter::prose_parsec::*;
+use pc::prose_interpreter::*;
+use pc::TerminateOnCloseDelegate;
 
-use prose_converter::prose_interpreter::expr::*;
-
-use nom::character::complete::digit1;
-use nom::combinator::all_consuming;
-use nom::sequence::tuple;
-//use nom::combinator::*;
-//use nom::error::*;
-//use nom::number::complete::*;
-use nom::branch::alt;
-use nom::number::complete::double;
+extern crate nom;
+use nom::character::complete::{alphanumeric1, multispace0, multispace1, space0, space1};
+use nom::number::complete::{double, f64};
 use nom::*;
 
-use std::str;
-use std::str::*;
+use std::fmt::Debug;
+use std::vec::*;
 
 const INPUT: &str = "!BP1:VAR| The quick brown fox jumps over the lazy dog.
 
@@ -52,38 +47,15 @@ It is !E1";
 #[derive(Clone, Data, Lens)]
 struct AppState {
     pub pre_format_text: String,
-    pub post_format_text: String,
+    pub post_format_text_regex: String,
+    pub post_format_text_parsec: String,
+    pub tester_state: TesterState,
 }
 
-fn build_ui() -> impl Widget<AppState> {
-    Padding::new(
-        5.0,
-        Flex::column()
-            .with_flex_child(
-                Flex::row()
-                    .with_flex_child(
-                        Label::dynamic(|data, _| format!("{}", data))
-                            .expand_width()
-                            .expand_height()
-                            .lens(AppState::pre_format_text),
-                        1.0,
-                    )
-                    .with_flex_child(
-                        Label::dynamic(|data, _| format!("{}", data))
-                            .expand_width()
-                            .expand_height()
-                            .lens(AppState::post_format_text),
-                        1.0,
-                    ),
-                1.0,
-            )
-            .with_flex_child(
-                Button::new("Convert").on_click(|_ctx, data: &mut AppState, _env| {
-                    data.post_format_text = convert_prose(&data.pre_format_text);
-                }),
-                1.0,
-            ),
-    )
+#[derive(Clone, Data, Lens)]
+struct TesterState {
+    pub ps_tester_in: String,
+    pub ps_tester_out: String,
 }
 
 fn main() -> Result<(), PlatformError> {
@@ -91,52 +63,169 @@ fn main() -> Result<(), PlatformError> {
         .window_size((1000.0, 600.0))
         .title("Prose Converter");
 
-    let app_state = AppState {
+    let mut app_state = AppState {
         pre_format_text: INPUT.to_string(),
-        post_format_text: convert_prose(&INPUT).to_string(),
+        post_format_text_regex: prose_regex::convert_prose(&INPUT).to_string(),
+        post_format_text_parsec: "Unimplemented".to_string(),
+        tester_state: TesterState {
+            ps_tester_in: " !BP1:VAR|Hello
+!BP2:VAR|Goodbye"
+                .to_string(),
+            ps_tester_out: "NOT UPDATED".to_string(),
+        },
     };
+    // test parserA
+    // named!(get_output<&str,&str>,
+    //     tag!("!BP1:VAR|")
+    // );
 
-    named!(exclaim, tag!("!"));
-    named!(name, take_until!(":"));
-    named!(type_ind, tag!(":"));
-    named!(var, tag!("VAR|"));
-    named!(val, take_until!("\n"));
-    //let exclaim = tag!("!");
-    let var_parser = tuple((exclaim, name, type_ind, var, val));
-    //let res = var_parser(b"!BP1:VAR|The quick brown fox jumps over the lazy dog.\n");
-    // match var_parser(b"!BP1:VAR|The quick brown fox jumps over the lazy dog.\n") {
-    //     Ok((inp, (_, name, _, _, val))) => println!(
-    //         "Remaining Input: {}\nResult Name: {}\nResult Value: {}",
-    //         str::from_utf8(inp).unwrap(),
-    //         str::from_utf8(name).unwrap(),
-    //         str::from_utf8(val).unwrap()
-    //     ),
-    //     Err(_) => println!("Error: "),
-    // };
-    named!(exact_is_float(&str) -> f64,
-        exact!(map_res!(recognize!(double), f64::from_str))
+    //TODO: multispace0 gets me an error for some reason and multispace1 requires whitespace before the variable.
+    named!(
+        robust<&str, Vec<Variable>>,
+        many0!(
+            do_parse!(
+                multispace1 >>
+                tag!("!") >>
+                name: alphanumeric1 >>
+                tag!(":VAR|") >>
+                value: alphanumeric1 >>
+                (Variable {name: name.to_string(), value: value.to_string()})
+            ))
     );
+    //named!(wspace<&str, &str>, delimited)
 
-    match exact_is_float("42") {
-        Ok((inp, num)) => println!("Remaining Input: '{}', Result Value: {}", inp, num),
-        Err(_) => println!("Error: "),
-    };
-    match exact_is_float("4Z") {
-        Ok((inp, num)) => println!("Remaining Input: '{}', Result Value: {}", inp, num),
-        Err(_) => println!("Error: "),
+    let res = robust(app_state.tester_state.ps_tester_in.as_str());
+    // let ok_res: &Vec<(&str, &str)> =
+    match &res {
+        Ok((_, var_vec)) => {
+            app_state.tester_state.ps_tester_out = format!(
+                "Full Result
+{0:?}
+    
+Vars:
+{1}",
+                res,
+                pretty_print_var_vec(var_vec)
+            );
+        }
+        _ => {}
     };
 
-    let expr = expression::Expression::from_string("2 + 2");
+    //let _expr = expression::Expression::from_string("2 + 2");
 
     AppLauncher::with_window(window)
-        .delegate(MyAppDelegate {})
+        .delegate(TerminateOnCloseDelegate {})
         .launch(app_state)
 }
 
-struct MyAppDelegate {}
+fn build_ui() -> impl Widget<AppState> {
+    Padding::new(
+        2.0,
+        Flex::column()
+            .with_flex_child(
+                Flex::row()
+                    .with_flex_child(
+                        build_input::<AppState>().lens(AppState::pre_format_text),
+                        1.0,
+                    )
+                    .with_spacer(10.0)
+                    .with_flex_child(
+                        build_regex_output::<AppState>().lens(AppState::post_format_text_regex),
+                        1.0,
+                    )
+                    .with_spacer(10.0)
+                    .with_flex_child(
+                        build_parsec_output::<AppState>().lens(AppState::post_format_text_parsec),
+                        1.0,
+                    )
+                    .with_spacer(10.0)
+                    .with_flex_child(
+                        build_parsec_tester_results::<AppState>()
+                            .lens(lens!(AppState, tester_state)),
+                        1.0,
+                    ),
+                1.0,
+            )
+            .with_flex_child(
+                Align::new(
+                    UnitPoint::BOTTOM,
+                    Button::new("Convert").on_click(|_ctx, data: &mut AppState, _env| {
+                        data.post_format_text_regex =
+                            prose_regex::convert_prose(&data.pre_format_text);
+                    }),
+                ),
+                1.0,
+            ),
+    )
+}
+fn build_input<T: Data>() -> impl Widget<String> {
+    Flex::column()
+        .with_child(Align::new(UnitPoint::TOP_LEFT, Label::new("Input:")))
+        .with_spacer(10.0)
+        .with_flex_child(
+            Align::new(
+                UnitPoint::TOP_LEFT,
+                Label::dynamic(|data, _| format!("{}", data))
+                    .with_line_break_mode(LineBreaking::WordWrap),
+            ),
+            1.0,
+        )
+}
 
-impl<T: Data> AppDelegate<T> for MyAppDelegate {
-    fn window_removed(&mut self, _id: WindowId, _data: &mut T, _env: &Env, _ctx: &mut DelegateCtx) {
-        std::process::exit(0x0000);
-    }
+fn build_regex_output<T: Data>() -> impl Widget<String> {
+    Flex::column()
+        .with_child(Align::new(UnitPoint::TOP_LEFT, Label::new("Regex Output:")))
+        .with_spacer(10.0)
+        .with_flex_child(
+            Align::new(
+                UnitPoint::TOP_LEFT,
+                Label::dynamic(|data, _| format!("{}", data))
+                    .with_line_break_mode(LineBreaking::WordWrap),
+            ),
+            1.0,
+        )
+}
+
+fn build_parsec_output<T: Data>() -> impl Widget<String> {
+    Flex::column()
+        .with_child(Align::new(
+            UnitPoint::TOP_LEFT,
+            Label::new("Parsec Output:"),
+        ))
+        .with_spacer(10.0)
+        .with_flex_child(
+            Align::new(
+                UnitPoint::TOP_LEFT,
+                Label::dynamic(|data, _| format!("{}", data))
+                    .with_line_break_mode(LineBreaking::WordWrap),
+            ),
+            1.0,
+        )
+}
+
+fn build_parsec_tester_results<T: Data>() -> impl Widget<TesterState> {
+    Flex::column()
+        .with_child(Align::new(UnitPoint::TOP_LEFT, Label::new("Parsec Test:")))
+        .with_spacer(10.0)
+        .with_child(Align::new(UnitPoint::TOP_LEFT, Label::new("Input:")))
+        .with_spacer(10.0)
+        .with_flex_child(
+            Align::new(
+                UnitPoint::TOP_LEFT,
+                Label::dynamic(|data: &TesterState, _| format!("{}", data.ps_tester_in))
+                    .with_line_break_mode(LineBreaking::WordWrap),
+            ),
+            1.0,
+        )
+        .with_spacer(10.0)
+        .with_child(Align::new(UnitPoint::TOP_LEFT, Label::new("Output:")))
+        .with_spacer(10.0)
+        .with_flex_child(
+            Align::new(
+                UnitPoint::TOP_LEFT,
+                Label::dynamic(|data: &TesterState, _| format!("{}", data.ps_tester_out))
+                    .with_line_break_mode(LineBreaking::WordWrap),
+            ),
+            1.0,
+        )
 }

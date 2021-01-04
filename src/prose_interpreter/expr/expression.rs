@@ -10,8 +10,9 @@ use nom::sequence::tuple;
 //use nom::error::*;
 //use nom::number::complete::*;
 use nom::branch::alt;
+use nom::character::complete::{alphanumeric1, multispace0};
 use nom::error::{ErrorKind, VerboseError, VerboseErrorKind};
-use nom::number::complete::double;
+use nom::number::complete::{double, f64};
 use nom::*;
 //use std::f64;
 use super::operand::*;
@@ -143,7 +144,7 @@ fn parse_binary_op(input: &str) -> Result<BinaryOperator, &str> {
 
 fn identify_component(input: &str) -> Option<Component> {
     match is_comp(input) {
-        Ok((inp, comp)) => Some(comp),
+        Ok((_inp, comp)) => Some(comp),
         Err(_) => {
             println!("Error: ");
             None
@@ -167,3 +168,40 @@ impl Expression {
         Expression { components }
     }
 }
+
+//Arithmetic
+named!(factor<&str,f64>,
+    alt!(
+    delimited!(multispace0, double, multispace0) |
+    delimited!(multispace0, delimited!(tag!("("), expr, tag!(")")), multispace0)
+));
+
+named!(term<&str,f64>, do_parse!(
+    init: factor >>
+    res: fold_many0!(
+        tuple!(
+            alt!(tag!("*") | tag!("/")),
+            factor
+        ),
+        init,
+        |acc, v:(_,f64)| {
+            if v.0 == "*" {acc * v.1} else {acc / v.1}
+        }
+    )
+    >> (res)
+));
+
+named!(expr<&str,f64>, do_parse!(
+    init: term >>
+    res: fold_many0!(
+        tuple!(
+            alt!(tag!("+") | tag!("-")),
+            term
+        ),
+        init,
+        |acc, v:(_,f64)| {
+            if v.0 == "+" {acc + v.1} else {acc - v.1}
+        }
+    )
+    >> (res)
+));

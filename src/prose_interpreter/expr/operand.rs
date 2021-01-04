@@ -34,7 +34,7 @@ impl ops::Add<Self> for Operand {
     type Output = Self;
 
     fn add(self, rhs: Self) -> Self {
-        match (self) {
+        match self {
             Operand::Number(left) => {
                 if let Operand::Number(right) = rhs {
                     Operand::Number(left + right)
