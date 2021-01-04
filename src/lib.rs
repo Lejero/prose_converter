@@ -3,6 +3,6 @@
 
 pub mod http_parser;
 pub mod prose_interpreter;
-mod simple_delegates;
+//mod simple_delegates;
 
-pub use simple_delegates::TerminateOnCloseDelegate;
+//pub use simple_delegates::TerminateOnCloseDelegate;
