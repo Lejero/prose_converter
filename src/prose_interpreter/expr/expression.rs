@@ -39,9 +39,9 @@ pub struct Expression {
     components: Vec<Component>,
 }
 
-named!(exact_float(&str) -> f64,
-    exact!(map_res!(recognize!(double), f64::from_str))
-);
+// named!(exact_float(&str) -> f64,
+//     exact!(map_res!(recognize!(double), f64::from_str))
+// );
 
 // named!(exact_int(&str) -> i64,
 //     exact!(map_res!(recognize!(i64!(nom::number::Endianness::Big)), i64::from_str))
@@ -72,9 +72,9 @@ named!(exact_float(&str) -> f64,
 //     }
 // }
 
-named!(exact_binary_op(&str) -> BinaryOperator,
-    exact!(map_res!(recognize!(tag!("+")), |x| parse_binary_op(x)))
-);
+// named!(exact_binary_op(&str) -> BinaryOperator,
+//     exact!(map_res!(recognize!(tag!("+")), |x| parse_binary_op(x)))
+// );
 
 //Full
 // named!(is_comp(&str) -> Component,
@@ -88,13 +88,13 @@ named!(exact_binary_op(&str) -> BinaryOperator,
 // );
 
 //Tester
-named!(is_comp(&str) -> Component,
-    alt!(
-        //map!(exact_int, |x| Component::Operand(Operand::Integer(x))) |
-        map!(exact_float, |x| Component::Operand(Operand::Number(x))) |
-        map!(exact_binary_op, |x| Component::BinaryOp(x))
-    )
-);
+// named!(is_comp(&str) -> Component,
+//     alt!(
+//         //map!(exact_int, |x| Component::Operand(Operand::Integer(x))) |
+//         map!(exact_float, |x| Component::Operand(Operand::Number(x))) |
+//         map!(exact_binary_op, |x| Component::BinaryOp(x))
+//     )
+// );
 
 // fn parse_binary_op(input: &str) -> IResult<&str, BinaryOperator, (&str, ErrorKind)> {
 //     match input {
@@ -142,66 +142,81 @@ fn parse_binary_op(input: &str) -> Result<BinaryOperator, &str> {
 
 // fn is_component(input: &str) -> R
 
-fn identify_component(input: &str) -> Option<Component> {
-    match is_comp(input) {
-        Ok((_inp, comp)) => Some(comp),
-        Err(_) => {
-            println!("Error: ");
-            None
-        }
-    }
-}
+// fn identify_component(input: &str) -> Option<Component> {
+//     match is_comp(input) {
+//         Ok((_inp, comp)) => Some(comp),
+//         Err(_) => {
+//             println!("Error: ");
+//             None
+//         }
+//     }
+// }
 
 //How to distinguish between components? Assume there is white space between each component?
 
-impl Expression {
-    pub fn from_string(input: &str) -> Self {
-        let mut components: Vec<Component> = Vec::new();
+// impl Expression {
+//     pub fn from_string(input: &str) -> Self {
+//         let mut components: Vec<Component> = Vec::new();
 
-        for comp in input.split(" ").filter(|s| s.len() > 0) {
-            match identify_component(comp) {
-                Some(c) => components.push(c),
-                None => {}
-            }
-        }
+//         for comp in input.split(" ").filter(|s| s.len() > 0) {
+//             match identify_component(comp) {
+//                 Some(c) => components.push(c),
+//                 None => {}
+//             }
+//         }
 
-        Expression { components }
-    }
-}
+//         Expression { components }
+//     }
+// }
 
 //Arithmetic
-named!(factor<&str,f64>,
-    alt!(
-    delimited!(multispace0, double, multispace0) |
-    delimited!(multispace0, delimited!(tag!("("), expr, tag!(")")), multispace0)
-));
+// named!(factor<&str,f64>,
+//     alt!(
+//     delimited!(multispace0, double, multispace0) |
+//     delimited!(multispace0, delimited!(tag!("("), expr, tag!(")")), multispace0)
+// ));
 
-named!(term<&str,f64>, do_parse!(
-    init: factor >>
-    res: fold_many0!(
-        tuple!(
-            alt!(tag!("*") | tag!("/")),
-            factor
-        ),
-        init,
-        |acc, v:(_,f64)| {
-            if v.0 == "*" {acc * v.1} else {acc / v.1}
-        }
-    )
-    >> (res)
-));
+// fn term(input: &str) -> IResult<&str, f64> {
+//     do_parse!(
+//         init: factor >>
+//         res: fold_many0!(
+//             tuple!(
+//                 alt!(tag!("*") | tag!("/")),
+//                 factor
+//             ),
+//             init,
+//             |acc, v:(_,f64)| {
+//                 if v.0 == "*" {acc * v.1} else {acc / v.1}
+//             }
+//         )
+// }
 
-named!(expr<&str,f64>, do_parse!(
-    init: term >>
-    res: fold_many0!(
-        tuple!(
-            alt!(tag!("+") | tag!("-")),
-            term
-        ),
-        init,
-        |acc, v:(_,f64)| {
-            if v.0 == "+" {acc + v.1} else {acc - v.1}
-        }
-    )
-    >> (res)
-));
+// named!(term<&str,f64>, do_parse!(
+//     init: factor >>
+//     res: fold_many0!(
+//         tuple!(
+//             alt!(tag!("*") | tag!("/")),
+//             factor
+//         ),
+//         init,
+//         |acc, v:(_,f64)| {
+//             if v.0 == "*" {acc * v.1} else {acc / v.1}
+//         }
+//     )
+//     >> (res)
+// ));
+
+// named!(expr<&str,f64>, do_parse!(
+//     init: term >>
+//     res: fold_many0!(
+//         tuple!(
+//             alt!(tag!("+") | tag!("-")),
+//             term
+//         ),
+//         init,
+//         |acc, v:(_,f64)| {
+//             if v.0 == "+" {acc + v.1} else {acc - v.1}
+//         }
+//     )
+//     >> (res)
+// ));

@@ -5,14 +5,6 @@ use nom::sequence::tuple;
 use nom::IResult;
 use nom::*;
 
-named!(method, take_while1!(is_alphanumeric));
-named!(space, take_while1!(|c| c == b' '));
-named!(url, take_while1!(|c| c != b' '));
-named!(http, tag!("HTTP/"));
-named!(version, take_while1!(is_version));
-named!(line_ending, tag!("\r\n"));
-named!(http_version, preceded!(http, version));
-
 fn is_version(c: u8) -> bool {
     c >= b'0' && c <= b'9' || c == b'.'
 }
